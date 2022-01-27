@@ -1,11 +1,11 @@
-package main
+package port
 
 import (
 	"fmt"
+	//"net"
+	//"time"
 )
 
-func main() {
-
+func testPrint() {
 	fmt.Println("test")
-
 }
