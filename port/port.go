@@ -1,45 +1,74 @@
 package port
 
 import (
-	"fmt"
 	"net"
-	"ping"
 	"strconv"
 	"time"
+
+	"honnef.co/go/netdb"
 )
 
-func ScanPort(protocol string, hostname string, port int) bool { //connection scan to single port
+type ScanResult struct {
+	Port    int
+	Status  string
+	Service string
+}
+
+func ScanPort(protocol string, hostname string, port int) ScanResult { //connection scan to single port
 	address := hostname + ":" + strconv.Itoa(port)
-	conn, err := net.DialTimeout(protocol, address, 2*time.Second)
+	portScanResult := ScanResult{port, "", ""}
+
+	var protoent *netdb.Protoent
+	var servent *netdb.Servent
+
+	conn, err := net.DialTimeout(protocol, address, 5*time.Second)
 
 	if err != nil {
-		fmt.Printf("ERROR: %s \n", err.Error())
-		return false
+		portScanResult.Status = "close"
+		return portScanResult
+	} else {
+		portScanResult.Status = "open"
 	}
+
+	protoent = netdb.GetProtoByName(protocol)
+	servent = netdb.GetServByPort(port, protoent)
+
+	portScanResult.Service = servent.Name
+
 	defer conn.Close()
-	return true
+
+	return portScanResult
 
 }
 
-func ScanPortInRange(protocol string, hostname string, start int, end int, resultChannel chan bool) { //connection scan ports of given range
+func ScanPortInRange(protocol string, hostname string, start int, end int) map[int]ScanResult { //connection scan ports of given range
 
-	//var results []bool
+	resultMap := make(map[int]ScanResult)
 	for i := start; i <= end; i++ {
-		resultChannel <- ScanPort(protocol, hostname, i)
-		//results = append(results, ScanPort(protocol, hostname, i))
+
+		scanMessage := ScanPort(protocol, hostname, i)
+		resultMap[i] = scanMessage
+
 	}
 
-	//return results
-}
-
-func PingPort(hostname string, count int, port int) {
-	pinger, err := ping.NewPinger(hostname)
-
-	if err != nil {
-		fmt.Printf("ERROR: %s \n", err.Error())
-	}
-
-	pinger.Count = count
-	pinger.Run()
+	return resultMap
 
 }
+
+// func PortScanResult(protocol string, hostname string, port int, status bool) string {
+
+// 	var protoent *netdb.Protoent
+// 	var servent *netdb.Servent
+
+// 	protoent = netdb.GetProtoByName(protocol)
+// 	servent = netdb.GetServByPort(port, protoent)
+
+// 	var portStatus string
+// 	if status == true {
+// 		portStatus = "open"
+// 	} else {
+// 		portStatus = "close"
+// 	}
+// 	message := fmt.Sprintf("Port:%d\\%s Status:%s Service:%s", port, protocol, portStatus, servent.Name)
+// 	return message
+// }
